@@ -1,8 +1,7 @@
 use std::{
-    cmp::{max, min},
+    cmp::max,
     fs::File,
     io::{BufRead, BufReader},
-    process::id,
     str::FromStr,
     u32,
 };
@@ -121,7 +120,7 @@ impl FromStr for Game {
             .split("; ")
             .map(|str| str.parse::<Draw>())
             .collect::<Result<Vec<Draw>, DrawParsingError>>()
-            .map_err(|e| GameParsingError)?;
+            .map_err(|_| GameParsingError)?;
 
         return Ok(Game::new(id, draws));
     }
