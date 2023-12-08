@@ -6,7 +6,7 @@ enum Instruction {
     Right,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 struct Instructions {
     list: Vec<Instruction>,
     current: usize,
@@ -94,6 +94,63 @@ struct Map {
     map: HashMap<String, Destination>,
 }
 
+impl Map {
+    fn traverse(
+        &self,
+        instructions: Instructions,
+        starting_node: &str,
+        is_end: fn(&str) -> bool,
+    ) -> usize {
+        let mut current = starting_node;
+        let mut count = 0;
+
+        for instruction in instructions {
+            if is_end(current) {
+                break;
+            }
+
+            match instruction {
+                Instruction::Left => current = &self.map[current].left,
+                Instruction::Right => current = &self.map[current].right,
+            }
+
+            count += 1;
+        }
+
+        return count;
+    }
+
+    fn traverse_parallel(&self, instructions: Instructions) -> usize {
+        let mut current_nodes = self
+            .map
+            .keys()
+            .filter(|key| key.ends_with("A"))
+            .collect::<Vec<&String>>();
+        let mut count = 0;
+
+        for instruction in instructions {
+            if current_nodes.iter().all(|node| node.ends_with("Z")) {
+                break;
+            }
+
+            current_nodes = match instruction {
+                Instruction::Left => current_nodes
+                    .iter()
+                    .map(|node| &self.map[*node].left)
+                    .collect(),
+                Instruction::Right => current_nodes
+                    .iter()
+                    .map(|node| &self.map[*node].right)
+                    .collect(),
+            };
+
+            count += 1;
+        }
+
+        return count;
+    }
+}
+
 #[derive(Debug)]
 enum ParseMapError {
     MapError,
@@ -127,34 +184,29 @@ fn main() {
 
     let mut split = input.split("\n\n");
 
-    let mut instructions = split
-        .next()
-        .unwrap()
-        .parse::<Instructions>()
-        .unwrap()
-        .into_iter();
+    let instructions = split.next().unwrap().parse::<Instructions>().unwrap();
     let map = split.next().unwrap().parse::<Map>().unwrap();
 
-    let mut current = "AAA";
-    let mut count = 0;
-    while current != "ZZZ" {
-        let instruction = instructions.next().unwrap();
+    // println!("{}", map.traverse_parallel(instructions.clone()));
 
-        match instruction {
-            Instruction::Left => current = &map.map[current].left,
-            Instruction::Right => current = &map.map[current].right,
-        }
+    let mut current_nodes = map
+        .map
+        .keys()
+        .filter(|key| key.ends_with("A"))
+        .collect::<Vec<&String>>();
 
-        count += 1;
-    }
+    println!("{:?}", current_nodes);
 
-    println!("{}", count);
+    let counts = current_nodes
+        .iter()
+        .map(|start| map.traverse(instructions.clone(), &start, |node| node.ends_with("Z")))
+        .collect::<Vec<usize>>();
+
+    println!("{:?}", counts);
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use crate::{Instruction, Instructions, Map};
 
     #[test]
@@ -217,5 +269,39 @@ ZZZ = (ZZZ, ZZZ)";
         assert!(map.contains_key("ZZZ"));
         assert_eq!(map["ZZZ"].left, "ZZZ");
         assert_eq!(map["ZZZ"].right, "ZZZ");
+    }
+
+    #[test]
+    fn test_map_traverse() {
+        let map = MAP.parse::<Map>();
+        assert!(map.is_ok());
+
+        let instructions = "LR".parse::<Instructions>();
+        assert!(instructions.is_ok());
+
+        assert_eq!(
+            map.unwrap()
+                .traverse(instructions.unwrap(), &"AAA", |node| node == "ZZZ"),
+            2
+        );
+    }
+
+    const MAP_PARALLEL: &str = "11A = (11B, XXX)
+11B = (XXX, 11Z)
+11Z = (11B, XXX)
+22A = (22B, XXX)
+22B = (22C, 22C)
+22C = (22Z, 22Z)
+22Z = (22B, 22B)
+XXX = (XXX, XXX)";
+    #[test]
+    fn test_map_traverse_parallel() {
+        let map: Result<Map, crate::ParseMapError> = MAP_PARALLEL.parse::<Map>();
+        assert!(map.is_ok());
+
+        let instructions = "LR".parse::<Instructions>();
+        assert!(instructions.is_ok());
+
+        assert_eq!(map.unwrap().traverse_parallel(instructions.unwrap()), 6);
     }
 }
