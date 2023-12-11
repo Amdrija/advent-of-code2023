@@ -120,6 +120,7 @@ impl Map {
         return count;
     }
 
+    #[allow(dead_code)]
     fn traverse_parallel(&self, instructions: Instructions) -> usize {
         let mut current_nodes = self
             .map
@@ -189,7 +190,7 @@ fn main() {
 
     // println!("{}", map.traverse_parallel(instructions.clone()));
 
-    let mut current_nodes = map
+    let current_nodes = map
         .map
         .keys()
         .filter(|key| key.ends_with("A"))
